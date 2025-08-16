@@ -1,0 +1,70 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "P-001",
+        "nombre": "Plaza Mayor de Lima",
+        "descripcion": "Centro histórico de Lima, Patrimonio de la Humanidad.",
+        "categoria": "Sitio histórico"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [ -77.042793, -12.046374 ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "P-002",
+        "nombre": "Parque Kennedy (Miraflores)",
+        "descripcion": "Parque emblemático de Miraflores, zona turística.",
+        "categoria": "Parque"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [ -77.028240, -12.125710 ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "P-003",
+        "nombre": "Parque El Olivar (San Isidro)",
+        "descripcion": "Bosque de olivos histórico en San Isidro.",
+        "categoria": "Parque"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [ -77.030500, -12.097500 ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "P-004",
+        "nombre": "Puente de los Suspiros (Barranco)",
+        "descripcion": "Tradicional puente y mirador en Barranco.",
+        "categoria": "Sitio histórico"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [ -77.016500, -12.151500 ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "P-005",
+        "nombre": "Fortaleza Real Felipe (Callao)",
+        "descripcion": "Fortaleza histórica en el Callao.",
+        "categoria": "Museo"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [ -77.154000, -12.062000 ]
+      }
+    }
+  ]
+}
