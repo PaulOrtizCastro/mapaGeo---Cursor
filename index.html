@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapa Perú - Puntos en Lima con Ubigeos</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+  <!-- OpenLayers CSS -->
+  <link href="https://openlayers.org/en/v6.15.1/css/ol.css" rel="stylesheet">
+  <!-- ol-geocoder CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/ol-geocoder@latest/dist/ol-geocoder.min.css" rel="stylesheet">
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+
+    /* Popup estilo (basado en ejemplo OL) */
+    .ol-popup {
+      position: absolute;
+      background-color: white;
+      -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #cccccc;
+      bottom: 12px;
+      left: -50px;
+      min-width: 260px;
+    }
+    .ol-popup:after, .ol-popup:before {
+      top: 100%;
+      border: solid transparent;
+      content: " ";
+      height: 0;
+      width: 0;
+      position: absolute;
+      pointer-events: none;
+    }
+    .ol-popup:after {
+      border-top-color: white;
+      border-width: 10px;
+      left: 48px;
+      margin-left: -10px;
+    }
+    .ol-popup:before {
+      border-top-color: #cccccc;
+      border-width: 11px;
+      left: 48px;
+      margin-left: -11px;
+    }
+    .ol-popup-closer {
+      text-decoration: none;
+      position: absolute;
+      top: 2px;
+      right: 8px;
+    }
+    .ol-popup-closer:after {
+      content: "✖";
+    }
+
+    /* Reubicar geocoder al extremo superior derecho */
+    .ol-geocoder.gcd-gl-control {
+      right: 0.5rem;
+      left: auto;
+      top: 0.5rem;
+    }
+
+    /* Control de Ubigeos (arriba-izquierda, debajo del zoom) */
+    .custom-ubigeo-control {
+      position: absolute;
+      top: 4.5rem;
+      left: 0.5rem;
+      background: rgba(255,255,255,0.95);
+      border-radius: 0.375rem;
+      padding: 0.5rem;
+      width: 260px;
+    }
+    .custom-ubigeo-control h6 {
+      font-size: 0.9rem;
+      margin: 0 0 0.25rem 0;
+    }
+    .custom-ubigeo-control .form-label {
+      margin-bottom: 0.25rem;
+      font-size: 0.8rem;
+    }
+    .custom-ubigeo-control .form-select,
+    .custom-ubigeo-control .form-control {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="map" class="map"></div>
+
+  <!-- Popup Overlay -->
+  <div id="popup" class="ol-popup" style="display:none;">
+    <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+    <div id="popup-content"></div>
+  </div>
+
+  <!-- OpenLayers JS -->
+  <script src="https://openlayers.org/en/v6.15.1/build/ol.js"></script>
+  <!-- ol-geocoder JS -->
+  <script src="https://cdn.jsdelivr.net/npm/ol-geocoder@latest/dist/ol-geocoder.min.js"></script>
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+  <script>
+    (function() {
+      // Vista centrada en Perú
+      const initialCenterLonLat = [-75.015152, -9.189967];
+      const initialZoom = 5.5;
+
+      const map = new ol.Map({
+        target: 'map',
+        layers: [
+          new ol.layer.Tile({
+            source: new ol.source.OSM(),
+            title: 'OSM Base'
+          })
+        ],
+        view: new ol.View({
+          center: ol.proj.fromLonLat(initialCenterLonLat),
+          zoom: initialZoom
+        }),
+        controls: ol.control.defaults().extend([
+          new ol.control.ScaleLine()
+        ])
+      });
+
+      // Geocoder (Nominatim) en la esquina superior derecha, restringido a Perú
+      const geocoder = new Geocoder('nominatim', {
+        provider: 'osm',
+        lang: 'es',
+        placeholder: 'Buscar dirección en Perú…',
+        targetType: 'text-input',
+        limit: 8,
+        autoComplete: true,
+        keepOpen: false,
+        countrycodes: 'pe'
+      });
+      map.addControl(geocoder);
+      geocoder.on('addresschosen', function(evt) {
+        if (!evt || !evt.coordinate) return;
+        map.getView().animate({ center: evt.coordinate, zoom: 16, duration: 500 });
+      });
+
+      // Capa de puntos (Lima) desde JSON
+      const pointsSource = new ol.source.Vector();
+      const pointsLayer = new ol.layer.Vector({
+        source: pointsSource,
+        title: 'Puntos - Lima',
+        style: function(feature) {
+          const category = (feature.get('categoria') || '').toLowerCase();
+          let color = '#0d6efd'; // azul por defecto
+          if (category.includes('histórico')) color = '#dc3545';
+          else if (category.includes('parque')) color = '#198754';
+          else if (category.includes('museo')) color = '#6f42c1';
+          return new ol.style.Style({
+            image: new ol.style.Circle({
+              radius: 7,
+              fill: new ol.style.Fill({ color }),
+              stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+            })
+          });
+        }
+      });
+      map.addLayer(pointsLayer);
+
+      fetch('data/puntos.json')
+        .then(r => r.json())
+        .then(json => {
+          const format = new ol.format.GeoJSON();
+          const features = format.readFeatures(json, {
+            dataProjection: 'EPSG:4326',
+            featureProjection: map.getView().getProjection()
+          });
+          pointsSource.addFeatures(features);
+        })
+        .catch(console.error);
+
+      // Overlay para popup
+      const container = document.getElementById('popup');
+      const content = document.getElementById('popup-content');
+      const closer = document.getElementById('popup-closer');
+      const popupOverlay = new ol.Overlay({
+        element: container,
+        autoPan: {
+          animation: { duration: 250 }
+        }
+      });
+      map.addOverlay(popupOverlay);
+
+      closer.onclick = function(evt) {
+        evt.preventDefault();
+        popupOverlay.setPosition(undefined);
+        container.style.display = 'none';
+        closer.blur();
+        return false;
+      };
+
+      function showFeaturePopup(feature, coordinate) {
+        const properties = feature.getProperties();
+        const title = properties.nombre || properties.title || 'Detalle';
+        const description = properties.descripcion || properties.description || '';
+        const category = properties.categoria ? `<span class="badge text-bg-secondary">${properties.categoria}</span>` : '';
+        const ubigeo = properties.ubigeo ? `<div class="mt-1"><small class="text-muted">UBIGEO: ${properties.ubigeo}</small></div>` : '';
+
+        content.innerHTML = `
+          <div class="card border-0">
+            <div class="card-body p-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <h6 class="card-title m-0">${title}</h6>
+                ${category}
+              </div>
+              ${description ? `<p class="card-text mt-2 mb-1">${description}</p>` : ''}
+              ${ubigeo}
+            </div>
+          </div>`;
+        container.style.display = 'block';
+        popupOverlay.setPosition(coordinate);
+      }
+
+      // Capa de Ubigeos (ejemplo simplificado)
+      const ubigeoSource = new ol.source.Vector();
+      const ubigeoLayer = new ol.layer.Vector({
+        source: ubigeoSource,
+        title: 'Ubigeos (Ejemplo)',
+        visible: true,
+        style: new ol.style.Style({
+          stroke: new ol.style.Stroke({ color: 'rgba(220,53,69,0.9)', width: 2 }),
+          fill: new ol.style.Fill({ color: 'rgba(220,53,69,0.10)' })
+        })
+      });
+      map.addLayer(ubigeoLayer);
+
+      fetch('data/ubigeos_ejemplo.geojson')
+        .then(r => r.json())
+        .then(json => {
+          const format = new ol.format.GeoJSON();
+          const features = format.readFeatures(json, {
+            dataProjection: 'EPSG:4326',
+            featureProjection: map.getView().getProjection()
+          });
+          ubigeoSource.addFeatures(features);
+          populateUbigeoSelect(features);
+        })
+        .catch(console.error);
+
+      // Control simple para "visor" de ubigeos (mostrar/ocultar + selección y búsqueda)
+      const ubigeoControl = document.createElement('div');
+      ubigeoControl.className = 'ol-control ol-unselectable shadow custom-ubigeo-control';
+      ubigeoControl.innerHTML = `
+        <h6>Visor de ubigeos</h6>
+        <div class="form-check form-switch mb-2">
+          <input class="form-check-input" type="checkbox" id="toggleUbigeo" checked>
+          <label class="form-check-label" for="toggleUbigeo">Mostrar capa</label>
+        </div>
+        <label for="ubigeoSelect" class="form-label">Ir a distrito (ejemplo):</label>
+        <select id="ubigeoSelect" class="form-select mb-2">
+          <option value="">Selecciona…</option>
+        </select>
+        <label for="ubigeoSearch" class="form-label">Buscar por UBIGEO:</label>
+        <div class="input-group input-group-sm">
+          <input type="text" id="ubigeoSearch" class="form-control" placeholder="e.g. 150101">
+          <button class="btn btn-primary" id="btnUbigeoSearch">Ir</button>
+        </div>
+      `;
+      const ubigeoControlOl = new ol.control.Control({ element: ubigeoControl });
+      map.addControl(ubigeoControlOl);
+
+      function populateUbigeoSelect(features) {
+        const select = document.getElementById('ubigeoSelect');
+        features
+          .slice()
+          .sort((a,b) => (a.get('nombre')||'').localeCompare(b.get('nombre')||''))
+          .forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.get('ubigeo') || '';
+            opt.textContent = `${f.get('nombre') || 'Sin nombre'}${f.get('ubigeo') ? ' (' + f.get('ubigeo') + ')' : ''}`;
+            select.appendChild(opt);
+          });
+      }
+
+      // Eventos del visor de ubigeos
+      ubigeoControl.querySelector('#toggleUbigeo').addEventListener('change', function(e) {
+        ubigeoLayer.setVisible(e.target.checked);
+      });
+
+      ubigeoControl.querySelector('#ubigeoSelect').addEventListener('change', function(e) {
+        const code = e.target.value;
+        if (!code) return;
+        const feature = ubigeoSource.getFeatures().find(f => (f.get('ubigeo')+'') === code+'');
+        if (feature) {
+          const extent = feature.getGeometry().getExtent();
+          map.getView().fit(extent, { duration: 500, padding: [40, 40, 40, 40], maxZoom: 16 });
+          const coordinate = ol.extent.getCenter(extent);
+          showFeaturePopup(feature, coordinate);
+        }
+      });
+
+      ubigeoControl.querySelector('#btnUbigeoSearch').addEventListener('click', function() {
+        const input = ubigeoControl.querySelector('#ubigeoSearch');
+        const code = (input.value || '').trim();
+        if (!code) return;
+        const feature = ubigeoSource.getFeatures().find(f => (f.get('ubigeo')+'') === code+'');
+        if (feature) {
+          const extent = feature.getGeometry().getExtent();
+          map.getView().fit(extent, { duration: 500, padding: [40, 40, 40, 40], maxZoom: 16 });
+          const coordinate = ol.extent.getCenter(extent);
+          showFeaturePopup(feature, coordinate);
+        } else {
+          // feedback sutil
+          input.classList.add('is-invalid');
+          setTimeout(() => input.classList.remove('is-invalid'), 1000);
+        }
+      });
+
+      // Interacción de clic: primero intenta puntos, luego ubigeos
+      map.on('singleclick', function(evt) {
+        let handled = false;
+        map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
+          if (!feature) return;
+          if (layer === pointsLayer) {
+            showFeaturePopup(feature, evt.coordinate);
+            handled = true;
+            return true; // corta el forEachFeatureAtPixel
+          }
+        });
+        if (handled) return;
+        map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
+          if (!feature) return;
+          if (layer === ubigeoLayer) {
+            showFeaturePopup(feature, evt.coordinate);
+            handled = true;
+            return true;
+          }
+        });
+      });
+
+      // Cambiar cursor al pasar sobre elementos clicables
+      map.on('pointermove', function(evt) {
+        const hit = map.hasFeatureAtPixel(evt.pixel, { layerFilter: l => (l === pointsLayer || l === ubigeoLayer) });
+        map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+      });
+
+    })();
+  </script>
+</body>
+</html>

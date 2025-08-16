@@ -1,0 +1,61 @@
+{
+  "type": "FeatureCollection",
+  "name": "ubigeos_lima_demo",
+  "crs": { "type": "name", "properties": { "name": "EPSG:4326" } },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "ubigeo": "150101",
+        "nombre": "Lima (Cercado de Lima)",
+        "nivel": "Distrito"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [ -77.065000, -12.060000 ],
+          [ -77.065000, -12.030000 ],
+          [ -77.030000, -12.030000 ],
+          [ -77.030000, -12.060000 ],
+          [ -77.065000, -12.060000 ]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ubigeo": "150122",
+        "nombre": "Miraflores",
+        "nivel": "Distrito"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [ -77.057000, -12.145000 ],
+          [ -77.057000, -12.100000 ],
+          [ -77.010000, -12.100000 ],
+          [ -77.010000, -12.145000 ],
+          [ -77.057000, -12.145000 ]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ubigeo": "150131",
+        "nombre": "San Isidro",
+        "nivel": "Distrito"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [ -77.055000, -12.110000 ],
+          [ -77.055000, -12.080000 ],
+          [ -77.020000, -12.080000 ],
+          [ -77.020000, -12.110000 ],
+          [ -77.055000, -12.110000 ]
+        ]]
+      }
+    }
+  ]
+}
