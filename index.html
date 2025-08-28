@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mapa con Búsqueda por UBIGEO</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>
+      html, body { height: 100%; margin: 0; }
+      #app { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+      .toolbar { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 10px; background: #f6f7f9; border-bottom: 1px solid #e1e5ea; }
+      .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .filters select { padding: 6px 8px; }
+      #map { width: 100%; height: 100%; }
+      .leaflet-popup-content { min-width: 240px; }
+      .popup-header { display: flex; gap: 10px; align-items: center; }
+      .popup-header img { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+      .popup-title { font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="toolbar">
+        <div class="filters">
+          <label>Región
+            <select id="regionSelect">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label>Provincia
+            <select id="provinciaSelect" disabled>
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label>Distrito
+            <select id="distritoSelect" disabled>
+              <option value="">Todos</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="./main.js"></script>
+  </body>
+  </html>
+
