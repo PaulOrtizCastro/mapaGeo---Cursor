@@ -1,0 +1,18 @@
+{
+  "regions": [
+    { "code": "08", "name": "CUSCO" },
+    { "code": "15", "name": "LIMA" },
+    { "code": "21", "name": "PUNO" }
+  ],
+  "provincias": [
+    { "code": "0801", "name": "CUSCO" },
+    { "code": "1501", "name": "LIMA" },
+    { "code": "2101", "name": "PUNO" }
+  ],
+  "distritos": [
+    { "code": "080101", "name": "CUSCO" },
+    { "code": "150101", "name": "LIMA" },
+    { "code": "210101", "name": "PUNO" }
+  ]
+}
+

@@ -39,6 +39,7 @@ popupCloserEl.onclick = function () {
 
 // Data state
 let allPoints = [];
+let catalog = { regions: [], provincias: [], distritos: [] };
 
 // UI elements
 const regionSelect = document.getElementById('regionSelect');
@@ -111,8 +112,12 @@ function getDistritoCode(ubigeo) { return typeof ubigeo === 'string' ? ubigeo.sl
 function unique(array) { return Array.from(new Set(array)).sort(); }
 
 function populateRegions(points) {
-  const regions = unique(points.map((p) => getRegionCode(p.ubigeo)).filter(Boolean));
-  regionSelect.innerHTML = '<option value="">Todas</option>' + regions.map((r) => `<option value="${r}">${r}</option>`).join('');
+  const regionCodes = unique(points.map((p) => getRegionCode(p.ubigeo)).filter(Boolean));
+  const codeToName = new Map(catalog.regions.map((r) => [r.code, r.name]));
+  regionSelect.innerHTML = '<option value="">Todas</option>' + regionCodes.map((r) => {
+    const name = codeToName.get(r) || r;
+    return `<option value="${r}">${name}</option>`;
+  }).join('');
   provinciaSelect.innerHTML = '<option value="">Todas</option>';
   provinciaSelect.disabled = true;
   distritoSelect.innerHTML = '<option value="">Todos</option>';
@@ -120,16 +125,24 @@ function populateRegions(points) {
 }
 
 function populateProvincias(points, regionCode) {
-  const provincias = unique(points.filter((p) => getRegionCode(p.ubigeo) === regionCode).map((p) => getProvinciaCode(p.ubigeo)).filter(Boolean));
-  provinciaSelect.innerHTML = '<option value="">Todas</option>' + provincias.map((c) => `<option value="${c}">${c}</option>`).join('');
+  const provinciaCodes = unique(points.filter((p) => getRegionCode(p.ubigeo) === regionCode).map((p) => getProvinciaCode(p.ubigeo)).filter(Boolean));
+  const codeToName = new Map(catalog.provincias.map((r) => [r.code, r.name]));
+  provinciaSelect.innerHTML = '<option value="">Todas</option>' + provinciaCodes.map((c) => {
+    const name = codeToName.get(c) || c;
+    return `<option value="${c}">${name}</option>`;
+  }).join('');
   provinciaSelect.disabled = false;
   distritoSelect.innerHTML = '<option value="">Todos</option>';
   distritoSelect.disabled = true;
 }
 
 function populateDistritos(points, provinciaCode) {
-  const distritos = unique(points.filter((p) => getProvinciaCode(p.ubigeo) === provinciaCode).map((p) => getDistritoCode(p.ubigeo)).filter(Boolean));
-  distritoSelect.innerHTML = '<option value="">Todos</option>' + distritos.map((c) => `<option value="${c}">${c}</option>`).join('');
+  const distritoCodes = unique(points.filter((p) => getProvinciaCode(p.ubigeo) === provinciaCode).map((p) => getDistritoCode(p.ubigeo)).filter(Boolean));
+  const codeToName = new Map(catalog.distritos.map((r) => [r.code, r.name]));
+  distritoSelect.innerHTML = '<option value="">Todos</option>' + distritoCodes.map((c) => {
+    const name = codeToName.get(c) || c;
+    return `<option value="${c}">${name}</option>`;
+  }).join('');
   distritoSelect.disabled = false;
 }
 
@@ -195,9 +208,16 @@ map.on('pointermove', function (evt) {
 
 async function loadData() {
   try {
-    const res = await fetch('./puntos.json');
-    const data = await res.json();
-    allPoints = Array.isArray(data) ? data : [];
+    const [resPts, resCat] = await Promise.all([
+      fetch('./puntos.json'),
+      fetch('./ubigeo.json'),
+    ]);
+    const [dataPts, dataCat] = await Promise.all([
+      resPts.json(),
+      resCat.json(),
+    ]);
+    allPoints = Array.isArray(dataPts) ? dataPts : [];
+    catalog = dataCat || catalog;
     populateRegions(allPoints);
     renderFeatures(allPoints);
   } catch (err) {
