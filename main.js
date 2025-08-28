@@ -1,21 +1,44 @@
-/* global L */
+/* global ol */
 
-const map = L.map('map', {
-  center: [-9.19, -75.02],
-  zoom: 6,
-  minZoom: 3,
-  maxZoom: 18,
-  worldCopyJump: true,
+// Base map and vector layer
+const vectorSource = new ol.source.Vector();
+const vectorLayer = new ol.layer.Vector({
+  source: vectorSource,
 });
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  maxZoom: 19,
-}).addTo(map);
+const map = new ol.Map({
+  target: 'map',
+  layers: [
+    new ol.layer.Tile({ source: new ol.source.OSM() }),
+    vectorLayer,
+  ],
+  view: new ol.View({
+    center: ol.proj.fromLonLat([-75.02, -9.19]),
+    zoom: 6,
+    minZoom: 3,
+    maxZoom: 18,
+  }),
+});
+
+// Popup overlay
+const popupEl = document.getElementById('popup');
+const popupContentEl = document.getElementById('popup-content');
+const popupCloserEl = document.getElementById('popup-closer');
+const popupOverlay = new ol.Overlay({
+  element: popupEl,
+  autoPan: { animation: { duration: 250 } },
+  stopEvent: true,
+});
+map.addOverlay(popupOverlay);
+
+popupCloserEl.onclick = function () {
+  popupOverlay.setPosition(undefined);
+  popupEl.style.display = 'none';
+  return false;
+};
 
 // Data state
 let allPoints = [];
-let markerLayer = L.layerGroup().addTo(map);
 
 // UI elements
 const regionSelect = document.getElementById('regionSelect');
@@ -23,15 +46,6 @@ const provinciaSelect = document.getElementById('provinciaSelect');
 const distritoSelect = document.getElementById('distritoSelect');
 
 // Utilities
-function createIcon(url) {
-  return L.icon({
-    iconUrl: url,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -28],
-  });
-}
-
 function buildPopup(p) {
   const safeDesc = String(p.descripcion || '').slice(0, 300);
   const img = p.imagen ? `<img src="${p.imagen}" alt="icono" />` : '';
@@ -47,46 +61,58 @@ function buildPopup(p) {
   `;
 }
 
-function clearMarkers() {
-  markerLayer.clearLayers();
+function styleForPoint(p) {
+  if (p.imagen) {
+    return new ol.style.Style({
+      image: new ol.style.Icon({
+        src: p.imagen,
+        anchor: [0.5, 1],
+        anchorXUnits: 'fraction',
+        anchorYUnits: 'fraction',
+        scale: 1,
+      }),
+    });
+  }
+  return new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 6,
+      fill: new ol.style.Fill({ color: '#1e88e5' }),
+      stroke: new ol.style.Stroke({ color: '#0d47a1', width: 2 }),
+    }),
+  });
 }
 
-function renderMarkers(points) {
-  clearMarkers();
-  const bounds = L.latLngBounds();
-  points.forEach((p) => {
-    if (typeof p.lat !== 'number' || typeof p.lon !== 'number') return;
-    const marker = L.marker([p.lat, p.lon], {
-      icon: p.imagen ? createIcon(p.imagen) : undefined,
-      title: p.descripcion || '',
-    });
-    marker.bindPopup(buildPopup(p));
-    marker.addTo(markerLayer);
-    bounds.extend([p.lat, p.lon]);
+function featureFromPoint(p) {
+  const feature = new ol.Feature({
+    geometry: new ol.geom.Point(ol.proj.fromLonLat([p.lon, p.lat])),
+    descripcion: p.descripcion,
+    ubigeo: p.ubigeo,
+    lat: p.lat,
+    lon: p.lon,
+    imagen: p.imagen,
   });
-  if (points.length > 0 && bounds.isValid()) {
-    map.fitBounds(bounds.pad(0.2));
+  feature.setStyle(styleForPoint(p));
+  return feature;
+}
+
+function renderFeatures(points) {
+  vectorSource.clear();
+  const valid = points.filter((p) => typeof p.lat === 'number' && typeof p.lon === 'number');
+  valid.forEach((p) => vectorSource.addFeature(featureFromPoint(p)));
+  if (vectorSource.getFeatures().length > 0) {
+    map.getView().fit(vectorSource.getExtent(), { padding: [50, 50, 50, 50], duration: 250, maxZoom: 14 });
   }
 }
 
-function getRegionCode(ubigeo) {
-  return typeof ubigeo === 'string' ? ubigeo.slice(0, 2) : '';
-}
-function getProvinciaCode(ubigeo) {
-  return typeof ubigeo === 'string' ? ubigeo.slice(0, 4) : '';
-}
-function getDistritoCode(ubigeo) {
-  return typeof ubigeo === 'string' ? ubigeo.slice(0, 6) : '';
-}
+function getRegionCode(ubigeo) { return typeof ubigeo === 'string' ? ubigeo.slice(0, 2) : ''; }
+function getProvinciaCode(ubigeo) { return typeof ubigeo === 'string' ? ubigeo.slice(0, 4) : ''; }
+function getDistritoCode(ubigeo) { return typeof ubigeo === 'string' ? ubigeo.slice(0, 6) : ''; }
 
-function unique(array) {
-  return Array.from(new Set(array)).sort();
-}
+function unique(array) { return Array.from(new Set(array)).sort(); }
 
 function populateRegions(points) {
   const regions = unique(points.map((p) => getRegionCode(p.ubigeo)).filter(Boolean));
-  regionSelect.innerHTML = '<option value="">Todas</option>' +
-    regions.map((r) => `<option value="${r}">${r}</option>`).join('');
+  regionSelect.innerHTML = '<option value="">Todas</option>' + regions.map((r) => `<option value="${r}">${r}</option>`).join('');
   provinciaSelect.innerHTML = '<option value="">Todas</option>';
   provinciaSelect.disabled = true;
   distritoSelect.innerHTML = '<option value="">Todos</option>';
@@ -94,26 +120,16 @@ function populateRegions(points) {
 }
 
 function populateProvincias(points, regionCode) {
-  const provincias = unique(points
-    .filter((p) => getRegionCode(p.ubigeo) === regionCode)
-    .map((p) => getProvinciaCode(p.ubigeo))
-    .filter(Boolean)
-  );
-  provinciaSelect.innerHTML = '<option value="">Todas</option>' +
-    provincias.map((c) => `<option value="${c}">${c}</option>`).join('');
+  const provincias = unique(points.filter((p) => getRegionCode(p.ubigeo) === regionCode).map((p) => getProvinciaCode(p.ubigeo)).filter(Boolean));
+  provinciaSelect.innerHTML = '<option value="">Todas</option>' + provincias.map((c) => `<option value="${c}">${c}</option>`).join('');
   provinciaSelect.disabled = false;
   distritoSelect.innerHTML = '<option value="">Todos</option>';
   distritoSelect.disabled = true;
 }
 
 function populateDistritos(points, provinciaCode) {
-  const distritos = unique(points
-    .filter((p) => getProvinciaCode(p.ubigeo) === provinciaCode)
-    .map((p) => getDistritoCode(p.ubigeo))
-    .filter(Boolean)
-  );
-  distritoSelect.innerHTML = '<option value="">Todos</option>' +
-    distritos.map((c) => `<option value="${c}">${c}</option>`).join('');
+  const distritos = unique(points.filter((p) => getProvinciaCode(p.ubigeo) === provinciaCode).map((p) => getDistritoCode(p.ubigeo)).filter(Boolean));
+  distritoSelect.innerHTML = '<option value="">Todos</option>' + distritos.map((c) => `<option value="${c}">${c}</option>`).join('');
   distritoSelect.disabled = false;
 }
 
@@ -121,16 +137,11 @@ function applyFilter() {
   const r = regionSelect.value;
   const p = provinciaSelect.value;
   const d = distritoSelect.value;
-
   let filtered = allPoints;
-  if (d) {
-    filtered = allPoints.filter((x) => getDistritoCode(x.ubigeo) === d);
-  } else if (p) {
-    filtered = allPoints.filter((x) => getProvinciaCode(x.ubigeo) === p);
-  } else if (r) {
-    filtered = allPoints.filter((x) => getRegionCode(x.ubigeo) === r);
-  }
-  renderMarkers(filtered);
+  if (d) filtered = allPoints.filter((x) => getDistritoCode(x.ubigeo) === d);
+  else if (p) filtered = allPoints.filter((x) => getProvinciaCode(x.ubigeo) === p);
+  else if (r) filtered = allPoints.filter((x) => getRegionCode(x.ubigeo) === r);
+  renderFeatures(filtered);
 }
 
 regionSelect.addEventListener('change', () => {
@@ -157,8 +168,29 @@ provinciaSelect.addEventListener('change', () => {
   applyFilter();
 });
 
-distritoSelect.addEventListener('change', () => {
-  applyFilter();
+distritoSelect.addEventListener('change', () => applyFilter());
+
+// Feature click handling for popup
+map.on('singleclick', function (evt) {
+  let found = null;
+  map.forEachFeatureAtPixel(evt.pixel, function (feature) {
+    found = feature;
+    return true;
+  });
+  if (found) {
+    const props = found.getProperties();
+    popupContentEl.innerHTML = buildPopup(props);
+    popupOverlay.setPosition(evt.coordinate);
+    popupEl.style.display = 'block';
+  } else {
+    popupOverlay.setPosition(undefined);
+    popupEl.style.display = 'none';
+  }
+});
+
+map.on('pointermove', function (evt) {
+  const hit = map.hasFeatureAtPixel(evt.pixel);
+  map.getTargetElement().style.cursor = hit ? 'pointer' : '';
 });
 
 async function loadData() {
@@ -167,7 +199,7 @@ async function loadData() {
     const data = await res.json();
     allPoints = Array.isArray(data) ? data : [];
     populateRegions(allPoints);
-    renderMarkers(allPoints);
+    renderFeatures(allPoints);
   } catch (err) {
     console.error('Error cargando puntos.json', err);
   }
