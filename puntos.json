@@ -1,0 +1,24 @@
+[
+  {
+    "descripcion": "Plaza Mayor de Lima",
+    "lon": -77.02824,
+    "lat": -12.04637,
+    "ubigeo": "150101",
+    "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Plaza_Mayor_Lima_Peru.jpg/256px-Plaza_Mayor_Lima_Peru.jpg"
+  },
+  {
+    "descripcion": "Catedral de Cusco",
+    "lon": -71.97809,
+    "lat": -13.51668,
+    "ubigeo": "080101",
+    "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Cusco_Cathedral%2C_Peru.jpg/256px-Cusco_Cathedral%2C_Peru.jpg"
+  },
+  {
+    "descripcion": "Lago Titicaca - Puno",
+    "lon": -69.32869,
+    "lat": -15.84022,
+    "ubigeo": "210101",
+    "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Lago_Titicaca_desde_Puno.jpg/256px-Lago_Titicaca_desde_Puno.jpg"
+  }
+]
+
